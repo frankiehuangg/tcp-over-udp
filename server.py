@@ -208,4 +208,43 @@ class Server(Node):
 
     ## to implement: kiki
     def __send_fin(self, client: ListeningClient):
-        pass
+        fin_message = MessageInfo(
+            ip=client_ip,
+            port=client_port,
+            segment=Segment.fin()
+        )
+
+        self.connection.send(client_ip, client_port, fin_message)
+
+        while True:
+            try:
+                print(f'[!] [Final] Waiting for response...')
+                self.connection.socket.settimeout(TIMEOUT)
+                fin_ack_message = self.connection.listen()
+
+                ip = fin_ack_message.ip
+                port = fin_ack_message.port
+                segment = fin_ack_message.segment
+
+                if segment == Segment.fin_ack():
+                    print(f'[!] [Final] Received FIN ACK response from {ip}:{port}')
+                    break
+                else:
+                    print(f'[X] [Final] Unknown segment received')
+                    print(f'[!] [Final] Retransmit FIN request to {client_ip}:{client_port}')
+
+            except TimeoutError as e:
+                print(f'[X] [Final] Timeout error: {e}')
+                print(f'[!] [Final] Retransmit FIN request to {client_ip}:{client_port}')
+
+                self.connection.send(client_ip, client_port, fin_message)
+
+            except InvalidChecksumError as e:
+                print(f'[X] [Final] Checksum error: {e}')
+                print(f'[!] [Final] Retransmit FIN request to {client_ip}:{client_port}')
+
+                self.connection.send(client_ip, client_port, fin_message)
+
+        print(f'[!] File transfer to {client_ip}:{client_port} completed')
+        print()
+
