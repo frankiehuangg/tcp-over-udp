@@ -247,4 +247,8 @@ class Server(Node):
 
         print(f'[!] File transfer to {client_ip}:{client_port} completed')
         print()
+        
+    def __del__(self):   
+        self.connection.socket.close()
+
 
