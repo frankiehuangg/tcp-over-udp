@@ -34,9 +34,6 @@ class Client(Node):
         self.__wait_syn_req()
         self.__send_syn_ack()
 
-    def handle_message(self, segment: Segment):
-        pass
-
     def __send_syn(self):
         syn_message = MessageInfo(
             ip=self.connection.ip,
@@ -140,7 +137,6 @@ class Client(Node):
 
                 self.connection.send(self.server_ip, self.server_port, syn_ack_message)
 
-    ## to implement: frank
     def __receive_data(self):
         data = b''
 
