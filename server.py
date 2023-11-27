@@ -39,6 +39,7 @@ class Server(Node):
         self.__listen_for_clients()
         self.__print_clients()
         self.__start_file_transfer()
+        self.connection.socket.close()
         pass
 
     ## to implement: chow
