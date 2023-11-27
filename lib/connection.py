@@ -79,7 +79,3 @@ class Node(ABC):
     @abstractmethod
     def run(self):
         pass
-
-    @abstractmethod
-    def handle_message(self, segment: Segment):
-        pass

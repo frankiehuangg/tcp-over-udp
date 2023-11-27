@@ -23,5 +23,3 @@ class Server(Node):
     def run(self):
         pass
 
-    def handle_message(self, segment: Segment):
-        pass
