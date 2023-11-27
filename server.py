@@ -145,9 +145,65 @@ class Server(Node):
 
     ## to implement: frankie
     def __send_data(self, client: ListeningClient):
-        print(f'[!] File transfer to {client.ip}:{client.port} completed')
-        print()
-        self.__send_fin(client)
+        client_ip = client.ip
+        client_port = client.port
+
+        total_segment = ceil(len(self.data) / PAYLOAD_SIZE)
+        window_size = min(total_segment, WINDOW_SIZE)
+
+        seq_base = 0
+
+        on_transfer = 0
+        while seq_base != total_segment:
+
+            while on_transfer < window_size:
+                payload = self.data[(seq_base + on_transfer) * PAYLOAD_SIZE:(seq_base + on_transfer + 1) * PAYLOAD_SIZE]
+
+                segment = Segment(
+                    flags=SegmentFlag(MSG_FLAG),
+                    seq_num=seq_base + on_transfer,
+                    ack_num=seq_base,
+                    checksum=b'',
+                    payload=payload
+                )
+
+                segment.update_checksum()
+
+                message_info = MessageInfo(
+                    ip=self.connection.ip,
+                    port=self.connection.port,
+                    segment=segment
+                )
+
+                self.connection.send(client_ip, client_port, message_info)
+                print(f'[!] Sending segment {seq_base + on_transfer} to {client_ip}:{client_port}')
+
+                on_transfer += 1
+
+            self.connection.socket.settimeout(TIMEOUT)
+            while True:
+                try:
+                    ack_message = self.connection.listen()
+
+                    ack_num = ack_message.segment.ack_num
+
+                    print(f'[!] Received ACK response {ack_num} from {client_ip}:{client_port}')
+
+                    if ack_num == seq_base:
+                        print(f'[!] ACK received sequentially, sending the next segment')
+                        seq_base += 1
+                        on_transfer -= 1
+                    else:
+                        print(
+                            f'[X] ACK number does not match, retransmit {window_size} segments starting from {seq_base}')
+                        on_transfer = 0
+
+                except TimeoutError as e:
+                    on_transfer = 0
+                    print(f'[X] Timeout error: {e}')
+
+                finally:
+                    break
         pass
 
     ## to implement: kiki
