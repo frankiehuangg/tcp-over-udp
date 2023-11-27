@@ -43,7 +43,7 @@ class Segment:
             payload=b''
         )
 
-        # to do: update checksum
+        segment.update_checksum()
 
         return segment
 
@@ -57,6 +57,7 @@ class Segment:
             payload=b''
         )
 
+        segment.update_checksum()
 
         return segment
 
@@ -70,6 +71,7 @@ class Segment:
             payload=b''
         )
 
+        segment.update_checksum()
 
         return segment
 
@@ -83,6 +85,7 @@ class Segment:
             payload=b''
         )
 
+        segment.update_checksum()
 
         return segment
 
@@ -96,6 +99,7 @@ class Segment:
             payload=b''
         )
 
+        segment.update_checksum()
 
         return segment
 
@@ -108,3 +112,35 @@ class Segment:
         data += self.payload
 
         return data
+
+    def calculate_checksum(self) -> bytes:
+        data = struct.pack('!I', self.seq_num)
+        data += struct.pack('!I', self.ack_num)
+        data += self.flags.get_flag_bytes()
+        data += b'\x00\x00\x00'
+        data += self.payload
+
+        xor_in = 0x0000
+        xor_out = 0x0000
+        poly = 0x8005
+
+        reg = xor_in
+        for octet in data:
+            for i in range(8):
+                topbit = reg & 0x8000
+                if octet & (0x80 >> i):
+                    topbit ^= 0x8000
+                reg <<= 1
+                if topbit:
+                    reg ^= poly
+            reg &= 0xFFFF
+
+        checksum = struct.pack('!H', reg ^ xor_out)
+
+        return checksum
+
+    def update_checksum(self):
+        self.checksum = self.calculate_checksum()
+
+    def is_valid_checksum(self) -> bool:
+        return self.calculate_checksum() == self.checksum
