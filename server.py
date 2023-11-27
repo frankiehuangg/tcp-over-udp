@@ -89,6 +89,7 @@ class Server(Node):
         for client in self.clients:
             self.__three_way_handshake(client)
             self.__send_data(client)
+            self.__send_fin(client)
 
     def __three_way_handshake(self, client: ListeningClient):
         print(f'[!] [Handshake] Handshake to client at {client.ip}:{client.port}')
@@ -248,8 +249,22 @@ class Server(Node):
 
         print(f'[!] File transfer to {client.ip}:{client.port} completed')
         print()
-        
-    def __del__(self):   
+
+    def __del__(self):
         self.connection.socket.close()
 
 
+def main():
+    broadcast_port = int(sys.argv[1])
+    input_path = sys.argv[2]
+
+    server = Server(
+        input_path=input_path,
+        ip="localhost",
+        port=broadcast_port
+    )
+
+    server.run()
+
+
+main()
