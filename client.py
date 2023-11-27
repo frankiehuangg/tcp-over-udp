@@ -140,4 +140,54 @@ class Client(Node):
 
     ## to implement: frank
     def __receive_data(self):
-        pass
+        data = b''
+
+        seq_num = 0
+        while True:
+            try:
+                self.connection.socket.settimeout(BLOCKING)
+                message = self.connection.listen()
+
+                ip = message.ip
+                port = message.port
+                segment = message.segment
+
+                if segment == Segment.fin():
+                    print(f'[!] Received FIN request from {ip}:{port}')
+
+                    fin_ack_message = MessageInfo(
+                        ip=self.connection.ip,
+                        port=self.connection.port,
+                        segment=Segment.fin_ack()
+                    )
+
+                    self.connection.send(self.server_ip, self.server_port, fin_ack_message)
+
+                    print(f'[!] Sending FIN ACK response to {self.server_ip}:{self.server_port}')
+
+                    break
+
+                if segment.seq_num == seq_num:
+                    data += segment.payload
+                    print(f'[!] Received segment number {seq_num}')
+
+                    ack_message = MessageInfo(
+                        ip=self.connection.ip,
+                        port=self.connection.port,
+                        segment=Segment.ack(seq_num, seq_num)
+                    )
+
+                    print(f'[!] Sending ACK response {seq_num} to {self.server_ip}:{self.server_port}')
+                    self.connection.send(self.server_ip, self.server_port, ack_message)
+                    seq_num += 1
+
+                else:
+                    print(f'[X] Rejected segment number {segment.seq_num}')
+
+            except InvalidChecksumError as e:
+                print(f'[X] Checksum error: {e}')
+
+        with open(self.output_path, 'wb') as f:
+            f.write(data)
+
+        self.connection.socket.close()
