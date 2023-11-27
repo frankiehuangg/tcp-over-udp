@@ -23,3 +23,88 @@ class SegmentFlag:
         flag += FIN_FLAG if self.fin else 0
 
         return struct.pack('!B', flag)
+
+
+@dataclass
+class Segment:
+    flags: SegmentFlag
+    seq_num: int
+    ack_num: int
+    checksum: bytes
+    payload: bytes
+
+    @staticmethod
+    def syn(seq_num: int) -> "Segment":
+        segment = Segment(
+            flags=SegmentFlag(SYN_FLAG),
+            seq_num=seq_num,
+            ack_num=0,
+            checksum=b'',
+            payload=b''
+        )
+
+        # to do: update checksum
+
+        return segment
+
+    @staticmethod
+    def ack(seq_num: int, ack_num: int) -> "Segment":
+        segment = Segment(
+            flags=SegmentFlag(ACK_FLAG),
+            seq_num=seq_num,
+            ack_num=ack_num,
+            checksum=b'',
+            payload=b''
+        )
+
+
+        return segment
+
+    @staticmethod
+    def syn_ack() -> "Segment":
+        segment = Segment(
+            flags=SegmentFlag(SYN_FLAG | ACK_FLAG),
+            seq_num=0,
+            ack_num=0,
+            checksum=b'',
+            payload=b''
+        )
+
+
+        return segment
+
+    @staticmethod
+    def fin() -> "Segment":
+        segment = Segment(
+            flags=SegmentFlag(FIN_FLAG),
+            seq_num=0,
+            ack_num=0,
+            checksum=b'',
+            payload=b''
+        )
+
+
+        return segment
+
+    @staticmethod
+    def fin_ack() -> "Segment":
+        segment = Segment(
+            flags=SegmentFlag(FIN_FLAG | ACK_FLAG),
+            seq_num=0,
+            ack_num=0,
+            checksum=b'',
+            payload=b''
+        )
+
+
+        return segment
+
+    def get_bytes(self):
+        data = struct.pack('!I', self.seq_num)
+        data += struct.pack('!I', self.ack_num)
+        data += self.flags.get_flag_bytes()
+        data += b'\x00'
+        data += self.checksum
+        data += self.payload
+
+        return data
