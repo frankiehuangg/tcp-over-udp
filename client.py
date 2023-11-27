@@ -35,7 +35,6 @@ class Client(Node):
     def handle_message(self, segment: Segment):
         pass
 
-    ## to implement
     def __send_syn(self):
         syn_message = MessageInfo(
             ip=self.connection.ip,
@@ -80,7 +79,6 @@ class Client(Node):
 
         print()
 
-    ## to implement: kiki
     def __wait_syn_req(self):
         print(f'[!] [Handshake] Waiting for SYN request...')
 
@@ -98,6 +96,7 @@ class Client(Node):
             else:
                 print(f'[X] [Handshake] Unknown segment received')
 
+    def __send_syn_ack(self):
         syn_ack_message = MessageInfo(
             ip=self.connection.ip,
             port=self.connection.port,
@@ -105,11 +104,40 @@ class Client(Node):
         )
 
         print()
-        
+        print(f'[!] [Handshake] Sending SYN ACK request to {self.server_ip}:{self.server_port}')
 
-    # to implement: chow
-    def __send_syn_ack(self):
-        pass
+        self.connection.send(self.server_ip, self.server_port, syn_ack_message)
+
+        while True:
+            try:
+                print(f'[!] [Handshake] Waiting for response...')
+
+                self.connection.socket.settimeout(TIMEOUT)
+                ack_message = self.connection.listen()
+
+                ip = ack_message.ip
+                port = ack_message.port
+                segment = ack_message.segment
+
+                if segment == Segment.ack(0, 0):
+                    print(f'[!] [Handshake] Received ACK response from {ip}:{port}')
+                    break
+                else:
+                    print(f'[!] [Handshake] Unknown segment received')
+                    print(f'[!] [Handshake] Retransmit SYN ACK request to {self.server_ip}:{self.server_port}')
+
+            except TimeoutError as e:
+                print(f'[X] [Handshake] Timeout error: {e}')
+                print(f'[!] [Handshake] Retransmit SYN ACK request to {self.server_ip}:{self.server_port}')
+
+                self.connection.send(self.server_ip, self.server_port, syn_ack_message)
+
+            except InvalidChecksumError as e:
+                print(f'[X] [Handshake] Checksum error: {e}')
+                print(f'[!] [Handshake] Retransmit SYN ACK request to {self.server_ip}:{self.server_port}')
+
+                self.connection.send(self.server_ip, self.server_port, syn_ack_message)
+
     ## to implement: frank
     def __receive_data(self):
         pass
