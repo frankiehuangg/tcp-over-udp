@@ -71,3 +71,15 @@ class Connection:
 
     def close(self):
         self.socket.close()
+
+
+class Node(ABC):
+    connection: Connection
+
+    @abstractmethod
+    def run(self):
+        pass
+
+    @abstractmethod
+    def handle_message(self, segment: Segment):
+        pass
