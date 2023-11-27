@@ -210,12 +210,12 @@ class Server(Node):
     ## to implement: kiki
     def __send_fin(self, client: ListeningClient):
         fin_message = MessageInfo(
-            ip=client_ip,
-            port=client_port,
+            ip=client.ip,
+            port=client.port,
             segment=Segment.fin()
         )
 
-        self.connection.send(client_ip, client_port, fin_message)
+        self.connection.send(client.ip, client.port, fin_message)
 
         while True:
             try:
@@ -232,21 +232,21 @@ class Server(Node):
                     break
                 else:
                     print(f'[X] [Final] Unknown segment received')
-                    print(f'[!] [Final] Retransmit FIN request to {client_ip}:{client_port}')
+                    print(f'[!] [Final] Retransmit FIN request to {client.ip}:{client.port}')
 
             except TimeoutError as e:
                 print(f'[X] [Final] Timeout error: {e}')
-                print(f'[!] [Final] Retransmit FIN request to {client_ip}:{client_port}')
+                print(f'[!] [Final] Retransmit FIN request to {client.ip}:{client.port}')
 
-                self.connection.send(client_ip, client_port, fin_message)
+                self.connection.send(client.ip, client.port, fin_message)
 
             except InvalidChecksumError as e:
                 print(f'[X] [Final] Checksum error: {e}')
-                print(f'[!] [Final] Retransmit FIN request to {client_ip}:{client_port}')
+                print(f'[!] [Final] Retransmit FIN request to {client.ip}:{client.port}')
 
-                self.connection.send(client_ip, client_port, fin_message)
+                self.connection.send(client.ip, client.port, fin_message)
 
-        print(f'[!] File transfer to {client_ip}:{client_port} completed')
+        print(f'[!] File transfer to {client.ip}:{client.port} completed')
         print()
         
     def __del__(self):   
