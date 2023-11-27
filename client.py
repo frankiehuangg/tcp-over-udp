@@ -82,7 +82,31 @@ class Client(Node):
 
     ## to implement: kiki
     def __wait_syn_req(self):
-        pass
+        print(f'[!] [Handshake] Waiting for SYN request...')
+
+        while True:
+            self.connection.socket.settimeout(BLOCKING)
+            syn_message = self.connection.listen()
+
+            ip = syn_message.ip
+            port = syn_message.port
+            segment = syn_message.segment
+
+            if segment == Segment.syn(0):
+                print(f'[!] [Handshake] Received SYN response from {ip}:{port}')
+                break
+            else:
+                print(f'[X] [Handshake] Unknown segment received')
+
+        syn_ack_message = MessageInfo(
+            ip=self.connection.ip,
+            port=self.connection.port,
+            segment=Segment.syn_ack()
+        )
+
+        print()
+        
+
     # to implement: chow
     def __send_syn_ack(self):
         pass
