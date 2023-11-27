@@ -8,7 +8,7 @@ from lib.exception import InvalidChecksumError
 from lib.segment import Segment, SegmentFlag
 
 
-class ListeningClient():
+class ListeningClient:
     ip: str
     port: int
 
@@ -39,10 +39,6 @@ class Server(Node):
         self.__listen_for_clients()
         self.__print_clients()
         self.__start_file_transfer()
-        pass
-
-    ## to implement: chow
-    def __three_way_handshake(self, client: ListeningClient):
         pass
 
     def __print_clients(self):
@@ -92,7 +88,60 @@ class Server(Node):
         for client in self.clients:
             self.__three_way_handshake(client)
             self.__send_data(client)
-        pass
+
+    def __three_way_handshake(self, client: ListeningClient):
+        print(f'[!] [Handshake] Handshake to client at {client.ip}:{client.port}')
+
+        syn_message = MessageInfo(
+            ip=self.connection.ip,
+            port=self.connection.port,
+            segment=Segment.syn(0)
+        )
+
+        print(f'[!] [Handshake] Sending SYN request to {client.ip}:{client.port}')
+
+        self.connection.send(client.ip, client.port, syn_message)
+
+        while True:
+            try:
+                print(f'[!] [Handshake] Waiting for response...')
+                self.connection.socket.settimeout(TIMEOUT)
+                syn_ack_message = self.connection.listen()
+
+                ip = syn_ack_message.ip
+                port = syn_ack_message.port
+                segment = syn_ack_message.segment
+
+                if segment == Segment.syn_ack():
+                    print(f'[!] [Handshake] Received SYN ACK response from {ip}:{port}')
+                    break
+                else:
+                    print(f'[!] [Handshake] Unknown segment received')
+                    print(f'[!] [Handshake] Retransmit SYN request to {client.ip}:{client.port}')
+
+            except TimeoutError as e:
+                print(f'[X] [Handshake] Timeout error: {e}')
+                print(f'[!] [Handshake] Retransmit SYN request to {client.ip}:{client.port}')
+
+                self.connection.send(client.ip, client.port, syn_message)
+
+            except InvalidChecksumError as e:
+                print(f'[X] [Handshake] Checksum error: {e}')
+                print(f'[!] [Handshake] Retransmit SYN request to {client.ip}:{client.port}')
+
+                self.connection.send(client.ip, client.port, syn_message)
+
+        ack_message = MessageInfo(
+            ip=self.connection.ip,
+            port=self.connection.port,
+            segment=Segment.ack(0, 0)
+        )
+
+        self.connection.send(client.ip, client.port, ack_message)
+
+        print(f'[!] [Handshake] Sending ACK request to {client.ip}:{client.port}')
+        print(f'[!] [Handshake] Handshake completed')
+        print()
 
     ## to implement: frankie
     def __send_data(self, client: ListeningClient):
