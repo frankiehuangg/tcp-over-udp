@@ -1,9 +1,11 @@
+import sys
 from dataclasses import dataclass
 
 from lib.connection import Node, Connection, MessageInfo
 from lib.constant import TIMEOUT, BLOCKING
 from lib.exception import InvalidChecksumError
 from lib.segment import Segment
+
 
 @dataclass
 class Client(Node):
@@ -191,3 +193,22 @@ class Client(Node):
             f.write(data)
 
         self.connection.socket.close()
+
+
+def main():
+    client_port = int(sys.argv[1])
+    broadcast_port = int(sys.argv[2])
+    output_path = sys.argv[3]
+
+    client = Client(
+        server_ip="localhost",
+        server_port=broadcast_port,
+        output_path=output_path,
+        ip="localhost",
+        port=client_port
+    )
+
+    client.run()
+
+
+main()
