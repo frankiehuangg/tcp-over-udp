@@ -1,7 +1,7 @@
 import sys
+import os
 from dataclasses import dataclass
 from math import ceil
-
 from lib.connection import Node, Connection, MessageInfo
 from lib.constant import BLOCKING, TIMEOUT, PAYLOAD_SIZE, WINDOW_SIZE, MSG_FLAG
 from lib.exception import InvalidChecksumError
@@ -22,17 +22,21 @@ class Server(Node):
     data: bytes
     input_path: str
     clients: list[ListeningClient]
+    file_name: str
+    file_size: int
 
     def __init__(self, input_path: str, ip: str = "localhost", port: int = 8000):
         super().__init__()
         self.clients = []
         self.connection = Connection(ip=ip, port=port)
+        self.file_name = input_path
+
         print(f'[!] Server started at {self.connection.ip}:{self.connection.port}')
 
-        with open(input_path, 'rb') as f:
-            self.data = f.read()
-
-        print(f'[!] Source file | {input_path} | {len(self.data)} bytes')
+        # with open(input_path, 'rb') as f:
+        #     self.data = f.read()
+        self.file_size = os.path.getsize(input_path)
+        print(f'[!] Source file | {input_path} | {self.file_size} bytes')
 
     def run(self):
         print(f'[!] Listening to {self.connection.ip}:{self.connection.port} for clients\n')
@@ -150,16 +154,18 @@ class Server(Node):
         client_ip = client.ip
         client_port = client.port
 
-        total_segment = ceil(len(self.data) / PAYLOAD_SIZE)
+        total_segment = ceil(self.file_size / PAYLOAD_SIZE)
         window_size = min(total_segment, WINDOW_SIZE)
 
         seq_base = 0
 
         on_transfer = 0
+        f = open(self.file_name, "rb")
         while seq_base != total_segment:
 
             while on_transfer < window_size:
-                payload = self.data[(seq_base + on_transfer) * PAYLOAD_SIZE:(seq_base + on_transfer + 1) * PAYLOAD_SIZE]
+                f.seek((seq_base + on_transfer) * PAYLOAD_SIZE)
+                payload = f.read(PAYLOAD_SIZE)
 
                 segment = Segment(
                     flags=SegmentFlag(MSG_FLAG),
@@ -206,7 +212,7 @@ class Server(Node):
 
                 finally:
                     break
-        pass
+        f.close()
 
     ## to implement: kiki
     def __send_fin(self, client: ListeningClient):
