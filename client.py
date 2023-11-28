@@ -1,4 +1,5 @@
 import sys
+import struct
 from dataclasses import dataclass
 
 from lib.connection import Node, Connection, MessageInfo
@@ -138,7 +139,6 @@ class Client(Node):
 
     def __receive_data(self):
         data = b''
-
         seq_num = 0
         while True:
             try:
@@ -165,7 +165,13 @@ class Client(Node):
                     break
 
                 if segment.seq_num == seq_num:
-                    data += segment.payload
+                    if segment.seq_num == 0:
+                        file_name, file_ext = struct.unpack("256s4s", segment.payload)
+                        decoded_file_name = file_name.decode().rstrip("\x00")
+                        decoded_file_ext = file_ext.decode().rstrip("\x00")
+                        print(f'[!] Received file metadata with filename: {decoded_file_name} and extension: {decoded_file_ext}')
+                    else:
+                        data += segment.payload
                     print(f'[!] Received segment number {seq_num}')
 
                     ack_message = MessageInfo(
