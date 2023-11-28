@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import struct
 
-from lib.constant import SYN_FLAG, ACK_FLAG, FIN_FLAG
+from lib.constant import SYN_FLAG, ACK_FLAG, FIN_FLAG, MSG_FLAG
 
 
 @dataclass
@@ -97,6 +97,23 @@ class Segment:
             ack_num=0,
             checksum=b'',
             payload=b''
+        )
+
+        segment.update_checksum()
+
+        return segment
+
+    @staticmethod
+    def metadata(file_name, file_ext) -> "Segment":
+        padded_file_name = file_name.ljust(256, '\x00')
+        padded_ext_name = file_ext.ljust(4, '\x00')
+        payload = struct.pack("256s4s", padded_file_name.encode(), padded_ext_name.encode())
+        segment = Segment(
+            flags=SegmentFlag(MSG_FLAG),
+            seq_num=0,
+            ack_num=0,
+            checksum=b'',
+            payload=payload
         )
 
         segment.update_checksum()
