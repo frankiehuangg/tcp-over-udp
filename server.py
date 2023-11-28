@@ -152,8 +152,7 @@ class Server(Node):
         seq_base = 0
 
         on_transfer = 0
-        while seq_base != total_segment:
-
+        while seq_base < total_segment:
             while on_transfer < window_size:
                 payload = self.data[(seq_base + on_transfer) * PAYLOAD_SIZE:(seq_base + on_transfer + 1) * PAYLOAD_SIZE]
 
@@ -199,8 +198,6 @@ class Server(Node):
                 except TimeoutError as e:
                     on_transfer = 0
                     print(f'[X] Timeout error: {e}')
-
-                finally:
                     break
 
     def __send_fin(self, client: ListeningClient):

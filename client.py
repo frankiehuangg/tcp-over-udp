@@ -178,6 +178,16 @@ class Client(Node):
                     self.connection.send(self.server_ip, self.server_port, ack_message)
                     seq_num += 1
 
+                elif segment.seq_num < seq_num:
+                    ack_message = MessageInfo(
+                        ip=self.connection.ip,
+                        port=self.connection.port,
+                        segment=Segment.ack(segment.seq_num, segment.seq_num)
+                    )
+
+                    print(f'[!] Resending ACK response {segment.seq_num} to {self.server_ip}:{self.server_port}')
+                    self.connection.send(self.server_ip, self.server_port, ack_message)
+
                 else:
                     print(f'[X] Rejected segment number {segment.seq_num}')
 
