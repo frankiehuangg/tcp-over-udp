@@ -166,7 +166,7 @@ class Server(Node):
                 if seq_base == 0:
                     message_info = self.__get_metadata_message(client)
                 else:
-                    f.seek((seq_base + on_transfer) * PAYLOAD_SIZE)
+                    f.seek((seq_base + on_transfer - 1) * PAYLOAD_SIZE)
                     payload = f.read(PAYLOAD_SIZE)
 
                     segment = Segment(
