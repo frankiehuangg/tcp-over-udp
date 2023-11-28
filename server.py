@@ -2,7 +2,6 @@ import sys
 import os
 from dataclasses import dataclass
 from math import ceil
-
 from lib.connection import Node, Connection, MessageInfo
 from lib.constant import BLOCKING, TIMEOUT, PAYLOAD_SIZE, WINDOW_SIZE, MSG_FLAG
 from lib.exception import InvalidChecksumError
@@ -23,17 +22,19 @@ class Server(Node):
     data: bytes
     input_path: str
     clients: list[ListeningClient]
-    file_name: str
+    file_path: str
     file_size: int
 
     def __init__(self, input_path: str, ip: str = "localhost", port: int = 8000):
         super().__init__()
         self.clients = []
         self.connection = Connection(ip=ip, port=port)
-        self.file_name = input_path
+        self.file_path = input_path
 
         print(f'[!] Server started at {self.connection.ip}:{self.connection.port}')
 
+        # with open(input_path, 'rb') as f:
+        #     self.data = f.read()
         self.file_size = os.path.getsize(input_path)
         print(f'[!] Source file | {input_path} | {self.file_size} bytes')
 
@@ -148,37 +149,41 @@ class Server(Node):
         print(f'[!] [Handshake] Handshake completed')
         print()
 
+    ## to implement: frankie
     def __send_data(self, client: ListeningClient):
         client_ip = client.ip
         client_port = client.port
-
-        total_segment = ceil(self.file_size / PAYLOAD_SIZE)
+        ## add one for metadata
+        total_segment = ceil(self.file_size / PAYLOAD_SIZE) + 1
         window_size = min(total_segment, WINDOW_SIZE)
 
         seq_base = 0
 
         on_transfer = 0
-        f = open(self.file_name, "rb")
+        f = open(self.file_path, "rb")
         while seq_base < total_segment:
             while on_transfer < window_size:
-                f.seek((seq_base + on_transfer) * PAYLOAD_SIZE)
-                payload = f.read(PAYLOAD_SIZE)
+                if seq_base == 0:
+                    message_info = self.__get_metadata_message(client)
+                else:
+                    f.seek((seq_base + on_transfer) * PAYLOAD_SIZE)
+                    payload = f.read(PAYLOAD_SIZE)
 
-                segment = Segment(
-                    flags=SegmentFlag(MSG_FLAG),
-                    seq_num=seq_base + on_transfer,
-                    ack_num=seq_base,
-                    checksum=b'',
-                    payload=payload
-                )
+                    segment = Segment(
+                        flags=SegmentFlag(MSG_FLAG),
+                        seq_num=seq_base + on_transfer,
+                        ack_num=seq_base,
+                        checksum=b'',
+                        payload=payload
+                    )
 
-                segment.update_checksum()
+                    segment.update_checksum()
 
-                message_info = MessageInfo(
-                    ip=self.connection.ip,
-                    port=self.connection.port,
-                    segment=segment
-                )
+                    message_info = MessageInfo(
+                        ip=self.connection.ip,
+                        port=self.connection.port,
+                        segment=segment
+                    )
 
                 self.connection.send(client_ip, client_port, message_info)
                 print(f'[!] Sending segment {seq_base + on_transfer} to {client_ip}:{client_port}')
@@ -249,6 +254,18 @@ class Server(Node):
 
         print(f'[!] File transfer to {client.ip}:{client.port} completed')
         print()
+
+    def __get_metadata_message(self, client: ListeningClient):
+        split_file = self.file_path.split(".")
+        file_name = split_file[0].split("/")[-1]
+        file_ext = split_file[1]
+        metadata_message = MessageInfo(
+            ip=client.ip,
+            port=client.port,
+            segment=Segment.metadata(file_name, file_ext)
+        )
+
+        return metadata_message
 
     def __del__(self):
         self.connection.socket.close()
