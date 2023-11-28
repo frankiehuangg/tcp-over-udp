@@ -163,7 +163,7 @@ class Server(Node):
         f = open(self.file_path, "rb")
         while seq_base < total_segment:
             while on_transfer < window_size:
-                if seq_base == 0:
+                if seq_base + on_transfer == 0:
                     message_info = self.__get_metadata_message(client)
                 else:
                     f.seek((seq_base + on_transfer - 1) * PAYLOAD_SIZE)
