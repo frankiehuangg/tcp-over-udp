@@ -37,6 +37,8 @@ class Peer(Node):
         self.input_path = input_path
         self.output_path = output_path
 
+        self.remote_data = b''
+
         self.connection = Connection(ip=self.user_ip, port=self.user_port)
 
         with open(input_path, 'rb') as f:
@@ -45,48 +47,45 @@ class Peer(Node):
     def run(self):
         print(f'[!] Initiating request to {self.remote_ip}:{self.remote_port}...')
 
-        is_receiver = self.__three_way_handshake()
+        is_receiver = self.__check_receiver()
 
         if is_receiver:
+            self.__three_way_handshake_receiver()
             self.__listen_data()
-
-            print(f'[!] Peer now acting as sender')
-            self.__send_syn()
-            self.__listen_syn_ack()
-            self.__send_ack()
-
+            self.__three_way_handshake_sender()
             self.__send_data()
-            self.__send_fin()
         else:
+            self.__three_way_handshake_sender()
             self.__send_data()
-            self.__send_fin()
-
-            print(f'[!] Peer now acting as receiver')
-            self.__listen_syn()
-            self.__send_syn_ack()
-            self.__listen_ack()
-
+            self.__three_way_handshake_receiver()
             self.__listen_data()
 
         self.connection.socket.close()
 
-    def __three_way_handshake(self) -> bool:
-        print(f'[!] Starting peer')
-        try:
-            # listen to SYN, if received then reply with SYN ACK, and listen to ACK
-            print(f'[!] Peer now acting as receiver')
-            self.__listen_syn()
-            self.__send_syn_ack()
-            self.__listen_ack()
-            return True
+    def __three_way_handshake_sender(self):
+        print(f'[!] Peer now acting as sender')
+        self.__send_syn()
 
-        except TimeoutError or InvalidChecksumError as _:
-            # if SYN not received, send SYN, listen to SYN ACK, and send ACK
-            print(f'[!] Peer now acting as sender')
+        finished = self.__listen_syn_ack()
+        while not finished:
             self.__send_syn()
-            self.__listen_syn_ack()
-            self.__send_ack()
-            return False
+            finished = self.__listen_syn_ack()
+
+        self.__send_ack()
+
+    def __three_way_handshake_receiver(self):
+        print(f'[!] Peer now acting as receiver')
+
+        finished = self.__listen_syn()
+        while not finished:
+            finished = self.__listen_syn()
+
+        self.__send_syn_ack()
+
+        finished = self.__listen_ack()
+        while not finished:
+            self.__send_syn_ack()
+            finished = self.__listen_ack()
 
     def __send_syn(self):
         syn_message = MessageInfo(
@@ -134,7 +133,7 @@ class Peer(Node):
         self.connection.send(self.remote_ip, self.remote_port, fin_message)
 
         print()
-        print(f'[!] [Final] Sending FIN ACK response to {self.remote_ip}:{self.remote_port}')
+        print(f'[!] [Final] Sending FIN response to {self.remote_ip}:{self.remote_port}')
 
     def __send_fin_ack(self):
         fin_ack_message = MessageInfo(
@@ -148,7 +147,24 @@ class Peer(Node):
         print()
         print(f'[!] [Final] Sending FIN ACK response to {self.remote_ip}:{self.remote_port}')
 
-    def __listen_syn(self):
+    def __check_receiver(self):
+        try:
+            self.connection.socket.settimeout(TIMEOUT)
+            syn_message = self.connection.listen()
+
+            return True
+
+        except TimeoutError as e:
+            print(f'[X] [Handshake] Timeout error: {e}')
+
+            return False
+
+        except InvalidChecksumError as e:
+            print(f'[X] [Handshake] Checksum error: {e}')
+
+            return False
+
+    def __listen_syn(self) -> bool:
         try:
             self.connection.socket.settimeout(TIMEOUT)
             syn_message = self.connection.listen()
@@ -159,18 +175,21 @@ class Peer(Node):
 
             if segment == Segment.syn(0):
                 print(f'[!] [Handshake] Received SYN response from {ip}:{port}')
+                return True
 
             else:
                 print(f'[X] [Handshake] Unknown segment received')
+                return False
 
         except TimeoutError as e:
             print(f'[X] [Handshake] Timeout error: {e}')
-            raise TimeoutError()
+            return False
 
         except InvalidChecksumError as e:
             print(f'[X] [Handshake] Checksum error: {e}')
+            return False
 
-    def __listen_syn_ack(self):
+    def __listen_syn_ack(self) -> True:
         try:
             print(f'[!] [Handshake] Waiting for response...')
             self.connection.socket.settimeout(TIMEOUT)
@@ -182,17 +201,21 @@ class Peer(Node):
 
             if segment == Segment.syn_ack():
                 print(f'[!] [Handshake] Received SYN ACK response from {ip}:{port}')
+                return True
 
             else:
                 print(f'[!] [Handshake] Unknown segment received')
+                return False
 
         except TimeoutError as e:
             print(f'[X] [Handshake] Timeout error: {e}')
+            return False
 
         except InvalidChecksumError as e:
             print(f'[X] [Handshake] Checksum error: {e}')
+            return False
 
-    def __listen_ack(self):
+    def __listen_ack(self) -> True:
         try:
             print(f'[!] [Handshake] Waiting for response...')
 
@@ -205,15 +228,19 @@ class Peer(Node):
 
             if segment == Segment.ack(0, 0):
                 print(f'[!] [Handshake] Received ACK response from {ip}:{port}')
+                return True
 
             else:
                 print(f'[!] [Handshake] Unknown segment received')
+                return False
 
         except TimeoutError as e:
             print(f'[X] [Handshake] Timeout error: {e}')
+            return False
 
         except InvalidChecksumError as e:
             print(f'[X] [Handshake] Checksum error: {e}')
+            return False
 
     def __send_data(self):
         client_ip = self.remote_ip
@@ -222,12 +249,12 @@ class Peer(Node):
         total_segment = ceil(len(self.user_data) / PAYLOAD_SIZE)
         window_size = min(total_segment, WINDOW_SIZE)
 
-        print(f'total segment: {total_segment}')
+        print(f'[!] Total segment: {total_segment}')
 
         seq_base = 0
 
         on_transfer = 0
-        while seq_base != total_segment:
+        while seq_base < total_segment:
 
             while on_transfer < window_size:
                 payload = self.user_data[
@@ -277,9 +304,9 @@ class Peer(Node):
                     print(f'[X] Timeout error: {e}')
                     break
 
-    def __listen_data(self):
-        self.remote_data = b''
+        self.__send_fin()
 
+    def __listen_data(self):
         seq_num = 0
         while True:
             try:
