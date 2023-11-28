@@ -161,20 +161,3 @@ class Segment:
 
     def is_valid_checksum(self) -> bool:
         return self.calculate_checksum() == self.checksum
-
-def main():
-    # Create a metadata segment
-    file_name = "example_file"
-    file_ext = "txt"
-    metadata_segment = Segment.metadata(file_name, file_ext)
-
-    # Unpack the metadata segment
-    unpacked_file_name, unpacked_file_ext = struct.unpack("256s4s", metadata_segment.payload)
-
-    # Decode and print the filename and extension
-    print("Unpacked File Name:", unpacked_file_name.decode().rstrip('\x00'))
-    print("Unpacked File Extension:", unpacked_file_ext.decode().rstrip('\x00'))
-
-
-if __name__ == "__main__":
-    main()
