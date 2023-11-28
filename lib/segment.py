@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import struct
 
-from lib.constant import SYN_FLAG, ACK_FLAG, FIN_FLAG
+from lib.constant import SYN_FLAG, ACK_FLAG, FIN_FLAG, MSG_FLAG
 
 
 @dataclass
@@ -103,6 +103,23 @@ class Segment:
 
         return segment
 
+    @staticmethod
+    def metadata(file_name, file_ext) -> "Segment":
+        padded_file_name = file_name.ljust(256, '\x00')
+        padded_ext_name = file_ext.ljust(4, '\x00')
+        payload = struct.pack("256s4s", padded_file_name.encode(), padded_ext_name.encode())
+        segment = Segment(
+            flags=SegmentFlag(MSG_FLAG),
+            seq_num=0,
+            ack_num=0,
+            checksum=b'',
+            payload=payload
+        )
+
+        segment.update_checksum()
+
+        return segment
+
     def get_bytes(self):
         data = struct.pack('!I', self.seq_num)
         data += struct.pack('!I', self.ack_num)
@@ -144,3 +161,20 @@ class Segment:
 
     def is_valid_checksum(self) -> bool:
         return self.calculate_checksum() == self.checksum
+
+def main():
+    # Create a metadata segment
+    file_name = "example_file"
+    file_ext = "txt"
+    metadata_segment = Segment.metadata(file_name, file_ext)
+
+    # Unpack the metadata segment
+    unpacked_file_name, unpacked_file_ext = struct.unpack("256s4s", metadata_segment.payload)
+
+    # Decode and print the filename and extension
+    print("Unpacked File Name:", unpacked_file_name.decode().rstrip('\x00'))
+    print("Unpacked File Extension:", unpacked_file_ext.decode().rstrip('\x00'))
+
+
+if __name__ == "__main__":
+    main()
