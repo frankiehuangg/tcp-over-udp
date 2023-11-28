@@ -27,7 +27,6 @@ class Client(Node):
         print(f'[!] Initiating request to {self.server_ip}:{self.server_port}...')
         self.__three_way_handshake()
         self.__receive_data()
-        pass
 
     def __three_way_handshake(self):
         self.__send_syn()

@@ -19,6 +19,7 @@ class MessageInfo:
         self.port = port
         self.segment = segment
 
+
 @dataclass
 class Connection:
     ip: str

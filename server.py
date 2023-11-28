@@ -40,13 +40,11 @@ class Server(Node):
         self.__print_clients()
         self.__start_file_transfer()
         self.connection.socket.close()
-        pass
 
     def __print_clients(self):
         print(f'Client list: ')
         for client in self.clients:
             print(f'- {client.ip}:{client.port}')
-        pass
 
     def __listen_for_clients(self):
         print(f'[!] Listening to {self.connection.ip}:{self.connection.port} for clients\n')
@@ -83,7 +81,6 @@ class Server(Node):
 
             else:
                 print(f'[X] [Request] Unknown segment received')
-        pass
 
     def __start_file_transfer(self):
         for client in self.clients:
@@ -145,7 +142,6 @@ class Server(Node):
         print(f'[!] [Handshake] Handshake completed')
         print()
 
-    ## to implement: frankie
     def __send_data(self, client: ListeningClient):
         client_ip = client.ip
         client_port = client.port
@@ -206,9 +202,7 @@ class Server(Node):
 
                 finally:
                     break
-        pass
 
-    ## to implement: kiki
     def __send_fin(self, client: ListeningClient):
         fin_message = MessageInfo(
             ip=client.ip,
